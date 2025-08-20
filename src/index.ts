@@ -10,6 +10,6 @@ registerRoot(() => {
     return import('./Root').then(m => m.RemotionRoot);
   }
   
-  // Otherwise load our timeline app
+  // Otherwise load our timeline app with routing
   return App;
 });

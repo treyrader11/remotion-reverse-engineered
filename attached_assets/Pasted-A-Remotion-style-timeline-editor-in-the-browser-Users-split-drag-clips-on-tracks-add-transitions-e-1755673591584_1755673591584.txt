@@ -1,0 +1,115 @@
+A Remotion-style timeline editor in the browser. Users split/drag clips on tracks, add transitions/effects, and the video preview reflects those edits in real time. Final renders export to MP4.
+
+# Responsibilities map (who does what)
+
+
+**1) Timeline/Composition Engine (my app logic)**
+
+
+- Owns the **source of truth**: tracks → items (start, end, in/out, speed), transitions, effects, keyframes.
+- On each tick/seek, resolves: “At time T, which clips are visible/audible, and how are they blended?”
+- Produces a **render plan**: for video (layers + transforms + transitions) and audio (regions + gains).
+- Debounces UI edits (split/drag) → recompute render plan → re-render preview.
+
+**2) Frame Rendering (Canvas/WebGL/WebGPU)**
+
+
+- Draws the current frame from decoded video frames + overlays/text/shapes.
+- Applies transforms (scale, rotate, crop), color adjustments, and **transition mix** (crossfade, wipe) between two clips.
+- Use:
+	- `Canvas2D` for simple MVP,
+	- **WebGL/WebGPU** for performant effects/shaders (blur, LUTs, glow, wipes).
+
+**3) Decode & Encode (WebCodecs)**
+
+
+- **Preview**:
+	- `VideoDecoder` → raw `VideoFrame` objects for the current time window.
+	- `AudioDecoder` → PCM for WebAudio graph (if you need perfect A/V sync).
+- **Export** (if staying purely web-native):
+	- `VideoEncoder` + `AudioEncoder` → elementary streams, then a muxer (see #4).
+- Pros: low latency, no big wasm payload, hardware-accelerated where possible.
+
+**4) Formats & Muxing (FFmpeg.wasm OR JS muxer)**
+
+
+- WebCodecs **does not** mux MP4. You need:
+	- **For final export**: `ffmpeg.wasm` to mux H.264/AAC → MP4 **or**
+	- A JS muxer (e.g., mp4box.js) to pack encoded frames into MP4.
+- **For importing odd codecs** or doing non-realtime transforms (resample, concat, audio normalize), `ffmpeg.wasm` helps.
+- Rule of thumb:
+	- **Realtime preview**: WebCodecs.
+	- **Anything container/format related**: FFmpeg (or mp4box for just mux).
+
+**5) Audio (Web Audio API)**
+
+
+- Build an **audio graph** matching the timeline (tracks → gains, fades, crossfades).
+- Drive sync with a shared clock (see #6).
+- For export: render to buffer (OfflineAudioContext) or encode via WebCodecs/FFmpeg.
+
+**6) Timing/Playback (Scheduler + Shared Clock)**
+
+
+- One “playhead clock” (high-res timestamp). All systems (decode, draw, audio) read the **same** time.
+- Use `requestAnimationFrame` (preview) + an internal scheduler to pre-request frames slightly ahead.
+- On **seek/drag/split**, flush decoders around the new time window and re-prime.
+
+**7) Workers/OffscreenCanvas**
+
+
+- Move heavy lifting off the main thread:
+	- Decode in a **Worker**.
+	- Render with **OffscreenCanvas** in a Worker if possible.
+	- Main thread handles React/DOM only.
+
+**8) Preview transport (optional)**
+
+
+- Two preview modes:
+	- **Direct Canvas**: draw decoded frames → lowest latency for editing.
+	- **MSE pipeline** (Media Source Extensions): if you pre-encode & mux a temporary preview stream. Higher latency; usually overkill for live editing.
+
+# Data flow (edit → frame on screen)
+
+1. User edits: split/drag/add transition.
+2. Timeline engine updates the model → computes render plan for time T.
+3. Scheduler requests frames near T (and T±ε for transitions).
+4. WebCodecs decoders deliver `VideoFrame`s; WebAudio schedules PCM/gains.
+5. Canvas/WebGL composites: background clip + transition mix + overlays.
+6. Present frame; repeat each tick.
+7. On export: iterate timeline → render frames deterministically → encode (WebCodecs) → mux (FFmpeg/mp4box) → MP4 file.
+
+# Where each tech shines (cheat sheet)
+
+- **Canvas 2D**: simplest compositing; fine for MVP and basic transitions.
+- **WebGL/WebGPU**: GPU shaders, complex effects, scalable performance.
+- **WebCodecs**: fast decode/encode of supported codecs; perfect for *preview*; pair with a muxer for *export*.
+- **FFmpeg.wasm**: format hell-solver (ingest weird stuff), mux/demux, offline transforms; heavier/larger, slower than native.
+- **Web Audio**: precise audio graph (fades, crossfades, EQ), sync with playhead.
+- **Workers + OffscreenCanvas**: keep UI snappy; do decode/render off main thread.
+- **MSE**: stream-like preview; mostly unnecessary for an editor’s live canvas.
+
+# Minimal MVP stack
+
+- Timeline model + scheduler (TypeScript).
+- WebCodecs decoders (video/audio) for preview.
+- Canvas2D compositing (crossfade, opacity, transform).
+- Web Audio graph for fades/crossfades; shared clock for A/V sync.
+- Export path: render → WebCodecs encode → **mp4box.js** mux (lighter) or **FFmpeg.wasm** (heavier, more universal).
+
+# Edge cases & gotchas
+
+- **A/V sync**: pick one clock source; align decode/render deadlines to it.
+- **Seeking latency**: flush decoders; keep a small frame cache around playhead.
+- **Color spaces**: be mindful of BT.709 vs sRGB, transfer functions, premultiplied alpha.
+- **Cross-origin media**: CORS for decoding & canvas readback.
+- **Performance**: avoid copying frames (`VideoFrame` → `drawImage` direct), recycle frames, throttle re-layouts.
+- **Transitions**: prefetch both clip A/B frames overlapping the transition window.
+
+# A sample “explain to Replit” paragraph
+
+> I’m building a browser-based timeline editor where the preview reflects live edits (split/drag/transitions). The **timeline engine** (my TS code) computes what’s visible at time T. **WebCodecs** decodes video/audio frames in a Worker. **Canvas/WebGL** composites frames and applies transitions/effects every rAF, while **Web Audio** plays the matching audio graph with a shared clock for sync. For **export**, I encode with WebCodecs and **mux to MP4** via mp4box.js (or FFmpeg.wasm when I need broader container/codec handling). OffscreenCanvas/Workers keep UI responsive. In short: my app decides *what* to show; Canvas/WebGL draws it; WebCodecs/FFmpeg handle *codecs/containers*; Web Audio handles sound; a scheduler ties it all together so the preview updates instantly when I edit the timeline.  
+  
+Currently this app is using remotion to achieve all the worker job logic and decoding but I want to achieve everything without remotion.
+

@@ -6,6 +6,7 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@radix-ui/react-context-menu": "^2.2.16",
     "@remotion/cli": "4.0.324",
     "@remotion/tailwind-v4": "4.0.324",
     "mp4box": "^2.1.0",

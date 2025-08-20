@@ -25,9 +25,9 @@
     "typescript": "5.8.2"
   },
   "scripts": {
-    "dev": "remotion studio",
-    "build": "remotion bundle",
-    "upgrade": "remotion upgrade",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint src && tsc"
   },
   "sideEffects": [

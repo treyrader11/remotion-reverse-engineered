@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import './timeline/theme/timeline.css';
+@import './theme/timeline.css';
 
 html,
 body,

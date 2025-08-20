@@ -10,10 +10,6 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       clientPort: 5000
-    },
-    proxy: {},
-    fs: {
-      strict: false
     }
   },
   preview: {

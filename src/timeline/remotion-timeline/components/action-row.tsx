@@ -109,15 +109,13 @@ export const ActionRow: React.FC<{
       const url = URL.createObjectURL(file);
 
       try {
-        const metadata = await parseMedia({
-          src: url,
-          fields: {
-            videoCodec: true,
-            slowDurationInSeconds: true,
-          },
-        });
+        // Use our custom MediaLoader instead of parseMedia
+        const { MediaLoader } = await import('../../engine/media-loader');
+        const mediaLoader = MediaLoader.getInstance();
+        const metadata = await mediaLoader.loadMediaMetadata(url);
+        
         const durationInFrames = Math.floor(
-          metadata.slowDurationInSeconds * fps
+          metadata.duration * fps
         );
 
         const space = findSpaceForItem(
@@ -129,7 +127,7 @@ export const ActionRow: React.FC<{
           throw new Error("Could not find space for video/audio");
         }
 
-        const isAudio = metadata.videoCodec === null;
+        const isAudio = !metadata.hasVideo;
         const id = generateRandomId();
 
         if (isAudio) {
@@ -139,7 +137,7 @@ export const ActionRow: React.FC<{
             from: space.startAt,
             type: "audio",
             audioUrl: url,
-            audioDurationInSeconds: metadata.slowDurationInSeconds,
+            audioDurationInSeconds: metadata.duration,
             audioStartFromInSeconds: 0,
             isDragging: false,
           });
@@ -147,7 +145,7 @@ export const ActionRow: React.FC<{
           ensureAddAndSelectItem(space.trackIndex, {
             id,
             durationInFrames,
-            videoDurationInSeconds: metadata.slowDurationInSeconds,
+            videoDurationInSeconds: metadata.duration,
             videoStartFromInSeconds: 0,
             from: space.startAt,
             type: "video",

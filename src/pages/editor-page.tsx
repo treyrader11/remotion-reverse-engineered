@@ -18,6 +18,7 @@ import { TimelineZoomProvider } from '../timeline/remotion-timeline/context/time
 import { useElementSize } from '../timeline/remotion-timeline/hooks/use-element-size';
 import { timelineContainerRef } from '../timeline/remotion-timeline/utils/restore-scroll-after-zoom';
 import { VideoPreview } from '../timeline/video-preview';
+import { MediaLibrary } from '../components/media-library';
 
 const initialState: TimelineInitialState = {
   fps: 30,
@@ -92,19 +93,29 @@ export const EditorPage: React.FC = () => {
       </div>
 
       <AppLayout>
-        <PreviewContainer>
-          <TimelineProvider initialState={initialState}>
-            <TimelineZoomProvider>
-              <TimelineSizeProvider size={size}>
-                <VideoPreview loop={false} playerRef={playerRef} />
-                <ActionRow playerRef={playerRef} />
-                <TimelineContainer>
-                  <Timeline playerRef={playerRef} />
-                </TimelineContainer>
-              </TimelineSizeProvider>
-            </TimelineZoomProvider>
-          </TimelineProvider>
-        </PreviewContainer>
+        <div className="flex h-full">
+          <div className="w-80 flex-shrink-0">
+            <MediaLibrary 
+              onAddToTimeline={(mediaItem) => {
+                console.log('Adding to timeline:', mediaItem);
+                // This would integrate with your timeline state management
+              }}
+            />
+          </div>
+          <PreviewContainer>
+            <TimelineProvider initialState={initialState}>
+              <TimelineZoomProvider>
+                <TimelineSizeProvider size={size}>
+                  <VideoPreview loop={false} playerRef={playerRef} />
+                  <ActionRow playerRef={playerRef} />
+                  <TimelineContainer>
+                    <Timeline playerRef={playerRef} />
+                  </TimelineContainer>
+                </TimelineSizeProvider>
+              </TimelineZoomProvider>
+            </TimelineProvider>
+          </PreviewContainer>
+        </div>
       </AppLayout>
     </div>
   );

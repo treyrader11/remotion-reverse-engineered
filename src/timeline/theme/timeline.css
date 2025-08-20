@@ -1,0 +1,19 @@
+/*
+ * Tailwind v4 theme. @import this file in your project if you're using Tailwind v4.
+ */
+@theme {
+	--color-timeline-bg: #28282e;
+	--color-timeline-panel: #212126; /* should be darker than bg to create a contrast */
+	--color-timeline-border: #000;
+	--color-timeline-accent: #0b84f3;
+	--color-timeline-scrollbar-track: rgba(255, 255, 255, 0.04);
+	--color-timeline-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+	--color-timeline-side-panel-text: var(--color-gray-200);
+	--color-timeline-side-panel-separator: #2e3136;
+	--color-timeline-tick-separator: color-mix(
+		in oklab,
+		var(--color-neutral-50) 5%,
+		transparent
+	);
+	--color-timeline-tick-text: var(--color-slate-400);
+}
